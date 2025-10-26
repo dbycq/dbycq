@@ -1,20 +1,221 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Wiki List</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.0.0/dist/markdown-it.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/texmath.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wikiWiki</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.1.0/github-markdown.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f6f8fa;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e1e4e8;
+        }
+        .links {
+            margin: 20px 0;
+        }
+        .links a {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #0969da;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-right: 12px;
+            transition: background-color 0.2s;
+        }
+        .links a:hover {
+            background: #0856c0;
+        }
+        .wiki-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        .wiki-table th,
+        .wiki-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e1e4e8;
+        }
+        .wiki-table th {
+            background-color: #f6f8fa;
+            font-weight: 600;
+        }
+        .wiki-table tr:hover {
+            background-color: #f6f8fa;
+        }
+        .wiki-table a {
+            color: #0969da;
+            text-decoration: none;
+        }
+        .wiki-table a:hover {
+            text-decoration: underline;
+        }
+        .markdown-body {
+            background: white;
+            padding: 32px;
+            border-radius: 6px;
+            border: 1px solid #e1e4e8;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #656d76;
+        }
+        .error {
+            background: #ffebe9;
+            border: 1px solid #ff8182;
+            color: #cf222e;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+    </style>
 </head>
 <body>
-    <h1 id="wiki_name">Loading...</h1>
-    <p>
-        <div id="options"></div>
-    </p>
-    <div id="wiki_container"></div>
-    <script src="js/utils.js"></script>
+    <div class="container">
+        <div class="header">
+            <h1 id="page-title">wikiWiki</h1>
+        </div>
+
+        <div id="links-section" class="links" style="display: none;">
+            <a href="#" id="submit-link">提交代码</a>
+            <a href="wiki.html">返回wiki列表</a>
+        </div>
+
+        <div id="content">
+            <div id="loading" class="loading">加载中...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            
+            <!-- wiki列表 -->
+            <div id="wiki-list" style="display: none;">
+                <h2>wiki列表</h2>
+                <table class="wiki-table">
+                    <thead>
+                        <tr>
+                            <th width="100">题号</th>
+                            <th>标题</th>
+                            <th width="150">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wiki-table-body"></tbody>
+                </table>
+            </div>
+
+            <!-- wiki内容 -->
+            <div id="wiki-content" style="display: none;">
+                <div class="markdown-body" id="markdown-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取URL参数
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('id');
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+
+        // 加载wiki列表
+        async function loadWikiList() {
+            try {
+                document.getElementById('page-title').textContent = 'wiki列表';
+                
+                const response = await fetch('/api/wiki');
+                if (!response.ok) {
+                    throw new Error('获取wiki列表失败');
+                }
+                
+                const wikis = await response.json();
+                
+                const tableBody = document.getElementById('wiki-table-body');
+                tableBody.innerHTML = '';
+                
+                wikis.forEach(wiki => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>P${wiki.id}</td>
+                        <td>${wiki.title}</td>
+                        <td>
+                            <a href="wiki.html?id=${wiki.id}">查看wiki</a>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('wiki-list').style.display = 'block';
+                
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        // 加载特定wiki内容
+        async function loadWikiContent(id) {
+            try {
+                document.getElementById('page-title').textContent = `wiki P${id}`;
+                document.getElementById('links-section').style.display = 'block';
+                document.getElementById('submit-link').href = `submit.html?id=${id}`;
+                
+                const response = await fetch(`/api/wiki/${id}`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error(`未找到wiki P${id}`);
+                    }
+                    throw new Error('获取wiki内容失败');
+                }
+                
+                const wiki = await response.json();
+                
+                // 这里可以集成Markdown解析器，如marked.js
+                // 暂时直接显示原始markdown
+                document.getElementById('markdown-content').textContent = wiki.markdown;
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('wiki-content').style.display = 'block';
+                
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const id = getUrlParams();
+            
+            if (id) {
+                // 有id参数，显示特定wiki
+                loadWikiContent(id);
+            } else {
+                // 没有id参数，显示wiki列表
+                loadWikiList();
+            }
+        });
+    </script>
 </body>
 </html>
